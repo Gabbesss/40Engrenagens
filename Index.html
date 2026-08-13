@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Máquina das 40 Engrenagens</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #090909;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+/* CABEÇALHO */
+
+header {
+    height: 75px;
+    flex-shrink: 0;
+
+    background: #111;
+    border-bottom: 1px solid #333;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 25px;
+}
+
+h1 {
+    margin: 0;
+    font-size: 22px;
+}
+
+#contador {
+    font-family: monospace;
+    color: #aaa;
+}
+
+/* ÁREA DA MÁQUINA */
+
+#machine {
+    flex: 1;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    display: flex;
+    align-items: center;
+
+    padding: 40px;
+}
+
+/*
+    Todas ficam na mesma linha.
+*/
+
+#gears {
+    display: flex;
+    align-items: center;
+
+    height: 300px;
+
+    padding-right: 80px;
+}
+
+/* ENGRENAGEM */
+
+.gear {
+    position: relative;
+
+    width: 180px;
+    height: 180px;
+
+    flex-shrink: 0;
+
+    margin-right: -18px;
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            #171717 0%,
+            #171717 10%,
+            #777 11%,
+            #444 20%,
+            #888 21%,
+            #555 62%,
+            #222 63%,
+            #444 72%,
+            #222 73%
+        );
+
+    border: 5px solid #888;
+
+    box-shadow:
+        0 0 0 5px #191919,
+        inset 0 0 20px #000;
+
+    transition: filter .2s;
+}
+
+/* DENTES */
+
+.tooth {
+    position: absolute;
+
+    width: 32px;
+    height: 32px;
+
+    left: calc(50% - 16px);
+    top: -18px;
+
+    background: #777;
+
+    border: 3px solid #999;
+
+    border-radius: 4px;
+}
+
+/* FURO CENTRAL */
+
+.hole {
+    position: absolute;
+
+    width: 35px;
+    height: 35px;
+
+    left: 50%;
+    top: 50%;
+
+    transform: translate(-50%, -50%);
+
+    border-radius: 50%;
+
+    background: #080808;
+
+    border: 5px solid #aaa;
+}
+
+/* NÚMERO */
+
+.number {
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    transform: translate(-50%, -50%);
+
+    font-weight: bold;
+    font-size: 16px;
+
+    pointer-events: none;
+
+    color: #ddd;
+}
+
+/* ROTAÇÃO */
+
+.gear.running {
+    filter: brightness(1.15);
+}
+
+/* BARRA INFERIOR */
+
+#info {
+    position: fixed;
+
+    left: 15px;
+    bottom: 15px;
+
+    background: rgba(0,0,0,.8);
+
+    padding: 10px 15px;
+
+    border: 1px solid #333;
+    border-radius: 6px;
+
+    font-family: monospace;
+    font-size: 12px;
+
+    z-index: 10;
+}
+
+/* MOBILE */
+
+@media(max-width:700px) {
+
+    header {
+        height: 60px;
+        padding: 0 12px;
+    }
+
+    h1 {
+        font-size: 16px;
+    }
+
+    #contador {
+        font-size: 10px;
+    }
+
+    .gear {
+        width: 130px;
+        height: 130px;
+    }
+
+    #gears {
+        height: 230px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+
+    <h1>⚙ MÁQUINA DAS 40 ENGRENAGENS</h1>
+
+    <div id="contador">
+        Carregando...
+    </div>
+
+</header>
+
+
+<div id="machine">
+
+    <div id="gears"></div>
+
+</div>
+
+
+<div id="info">
+    SISTEMA PERMANENTE • PROGRESSO SALVO AUTOMATICAMENTE
+</div>
+
+
+<script>
+
+/* ============================================================
+   CONFIGURAÇÃO
+============================================================ */
+
+const TOTAL = 40;
+
+const container = document.getElementById("gears");
+const contador = document.getElementById("contador");
+
+
+
+/* ============================================================
+   SALVAMENTO PERMANENTE
+============================================================ */
+
+/*
+    Guardamos apenas o momento em que a máquina começou.
+
+    Isso significa que:
+
+    - fechar a página NÃO para a máquina
+    - abrir novamente NÃO reinicia
+    - atualizar NÃO reinicia
+    - o tempo passado continua contando
+*/
+
+let data = localStorage.getItem("maquina40");
+
+if (!data) {
+
+    data = {
+        inicio: Date.now()
+    };
+
+    localStorage.setItem(
+        "maquina40",
+        JSON.stringify(data)
+    );
+
+} else {
+
+    data = JSON.parse(data);
+
+}
+
+
+/* ============================================================
+   CRIA AS 40 ENGRENAGENS
+============================================================ */
+
+const gears = [];
+
+for (let i = 0; i < TOTAL; i++) {
+
+    const gear = document.createElement("div");
+
+    gear.className = "gear";
+
+    /*
+        Engrenagens alternadas giram
+        em sentidos opostos.
+    */
+
+    if (i % 2 === 1) {
+        gear.style.marginTop = "85px";
+    } else {
+        gear.style.marginTop = "-85px";
+    }
+
+
+    /* DENTES */
+
+    const dentes = 12;
+
+    for (let d = 0; d < dentes; d++) {
+
+        const tooth = document.createElement("div");
+
+        tooth.className = "tooth";
+
+        tooth.style.transform =
+            `rotate(${d * (360 / dentes)}deg)`;
+
+        gear.appendChild(tooth);
+
+    }
+
+
+    /* FURO */
+
+    const hole = document.createElement("div");
+
+    hole.className = "hole";
+
+    gear.appendChild(hole);
+
+
+    /* NÚMERO */
+
+    const number = document.createElement("div");
+
+    number.className = "number";
+
+    number.textContent = i + 1;
+
+    gear.appendChild(number);
+
+
+    container.appendChild(gear);
+
+    gears.push(gear);
+}
+
+
+/* ============================================================
+   CÁLCULO
+============================================================ */
+
+/*
+    Engrenagem 1:
+        1 volta por segundo
+
+    Engrenagem 2:
+        1 volta a cada 10 voltas da 1
+
+    Engrenagem 3:
+        1 volta a cada 100 voltas da 1
+
+    Engrenagem 4:
+        1 volta a cada 1.000 voltas da 1
+
+    ...
+
+    Engrenagem 40:
+        1 volta a cada 10^39 voltas da 1
+*/
+
+
+function atualizar() {
+
+    const agora = Date.now();
+
+    const segundos =
+        (agora - data.inicio) / 1000;
+
+
+    /* ================================================
+       ANIMAÇÃO
+    ================================================ */
+
+    for (let i = 0; i < TOTAL; i++) {
+
+        /*
+            Cada engrenagem é 10 vezes mais lenta
+            que a anterior.
+        */
+
+        const velocidade =
+            Math.pow(10, -i);
+
+
+        /*
+            Número total de rotações.
+        */
+
+        const rotacoes =
+            segundos * velocidade;
+
+
+        /*
+            Pegamos somente o ângulo.
+            Assim números gigantes não quebram
+            a animação.
+        */
+
+        let angulo =
+            (rotacoes * 360) % 360;
+
+
+        /*
+            Engrenagens vizinhas giram
+            em sentidos contrários.
+        */
+
+        if (i % 2 === 1) {
+            angulo = -angulo;
+        }
+
+
+        gears[i].style.transform =
+            `rotate(${angulo}deg)`;
+
+        gears[i].classList.add("running");
+    }
+
+
+    /* ================================================
+       CONTADOR DA PRIMEIRA
+    ================================================ */
+
+    const voltas =
+        Math.floor(segundos);
+
+    contador.textContent =
+        "ENGRENAGEM 1: " +
+        voltas.toLocaleString("pt-BR") +
+        " VOLTAS";
+
+
+    requestAnimationFrame(atualizar);
+}
+
+
+/* ============================================================
+   INICIA
+============================================================ */
+
+atualizar();
+
+</script>
+
+</body>
+</html>
